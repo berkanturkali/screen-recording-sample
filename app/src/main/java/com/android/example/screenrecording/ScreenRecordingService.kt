@@ -12,6 +12,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -23,12 +24,15 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
 import android.view.WindowMetrics
-import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.Executors
 
 class ScreenRecordingService : Service() {
 
@@ -41,6 +45,16 @@ class ScreenRecordingService : Service() {
         const val EXTRA_RESULT_DATA = "RESULT_DATA"
     }
 
+    private val androidVersion = Build.VERSION.SDK_INT
+    private val androidVersion24 = Build.VERSION_CODES.N
+    private val androidVersion25 = Build.VERSION_CODES.N_MR1
+    private val androidVersion29 = Build.VERSION_CODES.Q
+
+    private val androidVersionIs24Or25Or29
+        get() = androidVersion == androidVersion24 ||
+                androidVersion == androidVersion25 ||
+                androidVersion == androidVersion29
+
 
     private var mediaProjection: MediaProjection? = null
     private lateinit var mediaCodec: MediaCodec
@@ -50,9 +64,12 @@ class ScreenRecordingService : Service() {
     private var isMuxerStarted = false
     private var isRecording = false
     override fun onBind(intent: Intent?): IBinder? = null
-    private var recordingScope = CoroutineScope(Dispatchers.IO)
+    private var recordingDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    private lateinit var mediaRecorder: MediaRecorder
+
+    private val recordingScope = CoroutineScope(Dispatchers.IO)
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
@@ -64,7 +81,7 @@ class ScreenRecordingService : Service() {
             }
 
             ACTION_STOP -> {
-//                stopRecording()
+                stopRecording()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -87,14 +104,17 @@ class ScreenRecordingService : Service() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotification(): Notification {
-        return Notification.Builder(this, CHANNEL_ID)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel()
+        }
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Recording in Progress")
             .setContentText("Your screen is being recorded.")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
             .build()
+
     }
 
     private fun startRecording(resultCode: Int, resultData: Intent) {
@@ -103,35 +123,43 @@ class ScreenRecordingService : Service() {
 
         mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData)
 
+        //Somehow the app crashing If I don't register a callback
         mediaProjection?.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
-                Log.i(TAG, "onStop: MediaProjection stopped")
-                stopRecording()
             }
         }, Handler(Looper.getMainLooper()))
 
         val (width, height, densityDp) = getScreenMetrics()
 
-        val outputPath = if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                val moviesDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "")
-            if(!moviesDir.exists()) {
+        val outputPath = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            val moviesDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "")
+            if (!moviesDir.exists()) {
                 moviesDir.mkdirs()
             }
             "${moviesDir.absolutePath}/screen_recording.mp4"
         } else {
-            val moviesDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "")
-            if(!moviesDir.exists()) {
+            val moviesDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                ""
+            )
+            if (!moviesDir.exists()) {
                 moviesDir.mkdirs()
             }
             "${moviesDir.absolutePath}/screen_recording.mp4"
         }
 
-        mediaMuxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        if(!androidVersionIs24Or25Or29) {
+            mediaMuxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        }
 
-        setupVideoEncoder(width, height)
+        setupVideoEncoder(outputPath, width, height)
 
 
-        val surface = mediaCodec.createInputSurface()
+        val surface = if (androidVersionIs24Or25Or29) {
+            mediaRecorder.surface
+        } else {
+            mediaCodec.createInputSurface()
+        }
         virtualDisplay = mediaProjection?.createVirtualDisplay(
             "ScreenRecording",
             width,
@@ -144,35 +172,61 @@ class ScreenRecordingService : Service() {
         )
 
         isRecording = true
-        mediaCodec.start()
+        if (androidVersionIs24Or25Or29) {
+            mediaRecorder.start()
+        } else {
+            mediaCodec.start()
+        }
 
         Log.i(TAG, "VirtualDisplay created with MediaCodec surface")
 
-        writeEncodedData()
+        if (!androidVersionIs24Or25Or29) {
+            recordingScope.launch {
+                writeEncodedData()
+            }
+        }
 
     }
 
     private val TAG = "ScreenRecordingService"
 
-    private fun setupVideoEncoder(width: Int, height: Int) {
-        mediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-        val videoFormat =
-            MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-                setInteger(
-                    MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
-                )
-                setInteger(MediaFormat.KEY_BIT_RATE, 8000000)
-                setInteger(MediaFormat.KEY_FRAME_RATE, 60)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
+    private fun setupVideoEncoder(path: String, width: Int, height: Int) {
+        if (androidVersionIs24Or25Or29) {
+            mediaRecorder = MediaRecorder()
+            mediaRecorder.apply {
+                mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                mediaRecorder.setOutputFile(path)
+                mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                mediaRecorder.setVideoSize(1920, 1080) // Set resolution
+                mediaRecorder.setVideoFrameRate(30)    // Set frame rate
+                mediaRecorder.setVideoEncodingBitRate(5000000) // Set bitrate
             }
-        mediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            mediaRecorder.prepare()
+        } else {
+            mediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            val videoFormat =
+                MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
+                    setInteger(
+                        MediaFormat.KEY_COLOR_FORMAT,
+                        MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
+                    )
+                    setInteger(MediaFormat.KEY_BIT_RATE, 8000000)
+                    setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+                    setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
+                    setInteger(
+                        MediaFormat.KEY_COLOR_FORMAT,
+                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
+                    )
+                }
+            mediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        }
     }
 
-    private fun writeEncodedData() {
+    private suspend fun writeEncodedData() {
         val bufferInfo = MediaCodec.BufferInfo()
 
-        recordingScope.launch {
+        withContext(recordingDispatcher) {
             while (isRecording) {
                 try {
                     val outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 1000)
@@ -191,6 +245,8 @@ class ScreenRecordingService : Service() {
                             videoTrackIndex = mediaMuxer.addTrack(mediaCodec.outputFormat)
                             startMuxer()
                         }
+                    } else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                        Thread.sleep(10)
                     }
                 } catch (e: InterruptedException) {
                     Log.i(TAG, "Thread interrupted, exiting")
@@ -215,12 +271,20 @@ class ScreenRecordingService : Service() {
 
         mediaProjection?.stop()
         mediaProjection = null
-        try {
-            mediaCodec.stop()
-            mediaCodec.release()
-        } catch (e: IllegalStateException) {
-            e.printStackTrace()
+        if (androidVersionIs24Or25Or29) {
+            mediaRecorder.stop()
+            mediaRecorder.reset()
+            mediaRecorder.release()
+        } else {
+            try {
+                mediaCodec.stop()
+                mediaCodec.release()
+            } catch (e: IllegalStateException) {
+                Log.e(TAG, "stopRecording: here")
+                e.printStackTrace()
+            }
         }
+
 
         if (isMuxerStarted) {
             mediaMuxer.stop()

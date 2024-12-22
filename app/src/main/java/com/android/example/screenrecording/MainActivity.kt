@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaActionSound
 import android.media.MediaPlayer
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
@@ -28,6 +29,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var screenCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
+
+    private lateinit var mediaProjection: MediaProjection
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
