@@ -50,6 +50,7 @@ class ScreenRecordingService : Service() {
     private val androidVersion25 = Build.VERSION_CODES.N_MR1
     private val androidVersion29 = Build.VERSION_CODES.Q
 
+    //Somehow the MediaCodec is not working with this versions.
     private val androidVersionIs24Or25Or29
         get() = androidVersion == androidVersion24 ||
                 androidVersion == androidVersion25 ||
@@ -57,8 +58,8 @@ class ScreenRecordingService : Service() {
 
 
     private var mediaProjection: MediaProjection? = null
-    private lateinit var mediaCodec: MediaCodec
-    private lateinit var mediaMuxer: MediaMuxer
+//    private lateinit var mediaCodec: MediaCodec
+//    private lateinit var mediaMuxer: MediaMuxer
     private var virtualDisplay: VirtualDisplay? = null
     private var videoTrackIndex: Int = -1
     private var isMuxerStarted = false
@@ -148,117 +149,133 @@ class ScreenRecordingService : Service() {
             "${moviesDir.absolutePath}/screen_recording.mp4"
         }
 
-        if(!androidVersionIs24Or25Or29) {
-            mediaMuxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        }
+//        if(!androidVersionIs24Or25Or29) {
+//            mediaMuxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+//        }
 
         setupVideoEncoder(outputPath, width, height)
 
 
-        val surface = if (androidVersionIs24Or25Or29) {
-            mediaRecorder.surface
-        } else {
-            mediaCodec.createInputSurface()
-        }
+//        val surface = if (androidVersionIs24Or25Or29) {
+//            mediaRecorder.surface
+//        } else {
+//            mediaCodec.createInputSurface()
+//        }
         virtualDisplay = mediaProjection?.createVirtualDisplay(
             "ScreenRecording",
             width,
             height,
             densityDp,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            surface,
+            mediaRecorder.surface,
             null,
             null
         )
 
         isRecording = true
-        if (androidVersionIs24Or25Or29) {
-            mediaRecorder.start()
-        } else {
-            mediaCodec.start()
-        }
+        mediaRecorder.start()
+//        if (androidVersionIs24Or25Or29) {
+//            mediaRecorder.start()
+//        } else {
+//            mediaCodec.start()
+//        }
 
         Log.i(TAG, "VirtualDisplay created with MediaCodec surface")
-
-        if (!androidVersionIs24Or25Or29) {
-            recordingScope.launch {
-                writeEncodedData()
-            }
-        }
+//
+//        if (!androidVersionIs24Or25Or29) {
+//            recordingScope.launch {
+//                writeEncodedData()
+//            }
+//        }
 
     }
 
     private val TAG = "ScreenRecordingService"
 
     private fun setupVideoEncoder(path: String, width: Int, height: Int) {
-        if (androidVersionIs24Or25Or29) {
-            mediaRecorder = MediaRecorder()
-            mediaRecorder.apply {
-                mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                mediaRecorder.setOutputFile(path)
-                mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                mediaRecorder.setVideoSize(1920, 1080) // Set resolution
-                mediaRecorder.setVideoFrameRate(30)    // Set frame rate
-                mediaRecorder.setVideoEncodingBitRate(5000000) // Set bitrate
-            }
-            mediaRecorder.prepare()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            mediaRecorder = MediaRecorder(baseContext)
         } else {
-            mediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-            val videoFormat =
-                MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-                    setInteger(
-                        MediaFormat.KEY_COLOR_FORMAT,
-                        MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
-                    )
-                    setInteger(MediaFormat.KEY_BIT_RATE, 8000000)
-                    setInteger(MediaFormat.KEY_FRAME_RATE, 30)
-                    setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
-                    setInteger(
-                        MediaFormat.KEY_COLOR_FORMAT,
-                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
-                    )
-                }
-            mediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            mediaRecorder = MediaRecorder()
         }
+        mediaRecorder.apply {
+            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            mediaRecorder.setOutputFile(path)
+            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            mediaRecorder.setVideoSize(width, height) // Set resolution
+            mediaRecorder.setVideoFrameRate(60)    // Set frame rate
+            mediaRecorder.setVideoEncodingBitRate(8000000) // Set bitrate
+        }
+        mediaRecorder.prepare()
+//        if (androidVersionIs24Or25Or29) {
+//            mediaRecorder = MediaRecorder()
+//            mediaRecorder.apply {
+//                mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+//                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+//                mediaRecorder.setOutputFile(path)
+//                mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+//                mediaRecorder.setVideoSize(1920, 1080) // Set resolution
+//                mediaRecorder.setVideoFrameRate(30)    // Set frame rate
+//                mediaRecorder.setVideoEncodingBitRate(5000000) // Set bitrate
+//            }
+//            mediaRecorder.prepare()
+//        } else {
+////            mediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+//            val videoFormat =
+//                MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
+//                    setInteger(
+//                        MediaFormat.KEY_COLOR_FORMAT,
+//                        MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
+//                    )
+//                    setInteger(MediaFormat.KEY_BIT_RATE, 8000000)
+//                    setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+//                    setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
+//                    setInteger(
+//                        MediaFormat.KEY_COLOR_FORMAT,
+//                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
+//                    )
+//                }
+////            mediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+//        }
     }
 
-    private suspend fun writeEncodedData() {
-        val bufferInfo = MediaCodec.BufferInfo()
-
-        withContext(recordingDispatcher) {
-            while (isRecording) {
-                try {
-                    val outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 1000)
-
-                    if (outputBufferIndex >= 0) {
-                        val encodedData = mediaCodec.getOutputBuffer(outputBufferIndex) ?: continue
-                        encodedData.position(bufferInfo.offset)
-                        encodedData.limit(bufferInfo.offset + bufferInfo.size)
-                        if (isMuxerStarted) {
-                            mediaMuxer.writeSampleData(videoTrackIndex, encodedData, bufferInfo)
-                        }
-
-                        mediaCodec.releaseOutputBuffer(outputBufferIndex, false)
-                    } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        if (!isMuxerStarted) {
-                            videoTrackIndex = mediaMuxer.addTrack(mediaCodec.outputFormat)
-                            startMuxer()
-                        }
-                    } else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        Thread.sleep(10)
-                    }
-                } catch (e: InterruptedException) {
-                    Log.i(TAG, "Thread interrupted, exiting")
-                    break
-                }
-            }
-        }
-    }
+//    private suspend fun writeEncodedData() {
+//        val bufferInfo = MediaCodec.BufferInfo()
+//
+//        withContext(recordingDispatcher) {
+//            while (isRecording) {
+//                try {
+//                    val outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 1000)
+//
+//                    if (outputBufferIndex >= 0) {
+//                        val encodedData = mediaCodec.getOutputBuffer(outputBufferIndex) ?: continue
+//                        encodedData.position(bufferInfo.offset)
+//                        encodedData.limit(bufferInfo.offset + bufferInfo.size)
+//                        if (isMuxerStarted) {
+//                            mediaMuxer.writeSampleData(videoTrackIndex, encodedData, bufferInfo)
+//                        }
+//
+//                        mediaCodec.releaseOutputBuffer(outputBufferIndex, false)
+//                    } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+//                        if (!isMuxerStarted) {
+//                            videoTrackIndex = mediaMuxer.addTrack(mediaCodec.outputFormat)
+//                            startMuxer()
+//                        }
+//                    } else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+//                        Thread.sleep(10)
+//                    }
+//                } catch (e: InterruptedException) {
+//                    Log.i(TAG, "Thread interrupted, exiting")
+//                    break
+//                }
+//            }
+//        }
+//    }
 
     private fun startMuxer() {
-        mediaMuxer.start()
-        isMuxerStarted = true
+//        mediaMuxer.start()
+//        isMuxerStarted = true
     }
 
     fun stopRecording() {
@@ -271,26 +288,30 @@ class ScreenRecordingService : Service() {
 
         mediaProjection?.stop()
         mediaProjection = null
-        if (androidVersionIs24Or25Or29) {
-            mediaRecorder.stop()
-            mediaRecorder.reset()
-            mediaRecorder.release()
-        } else {
-            try {
-                mediaCodec.stop()
-                mediaCodec.release()
-            } catch (e: IllegalStateException) {
-                Log.e(TAG, "stopRecording: here")
-                e.printStackTrace()
-            }
-        }
+
+        mediaRecorder.stop()
+        mediaRecorder.reset()
+        mediaRecorder.release()
+//        if (androidVersionIs24Or25Or29) {
+//            mediaRecorder.stop()
+//            mediaRecorder.reset()
+//            mediaRecorder.release()
+//        } else {
+//            try {
+//                mediaCodec.stop()
+//                mediaCodec.release()
+//            } catch (e: IllegalStateException) {
+//                Log.e(TAG, "stopRecording: here")
+//                e.printStackTrace()
+//            }
+//        }
 
 
-        if (isMuxerStarted) {
-            mediaMuxer.stop()
-            mediaMuxer.release()
-            isMuxerStarted = false
-        }
+//        if (isMuxerStarted) {
+//            mediaMuxer.stop()
+//            mediaMuxer.release()
+//            isMuxerStarted = false
+//        }
     }
 
     private fun getScreenMetrics(): Triple<Int, Int, Int> {
