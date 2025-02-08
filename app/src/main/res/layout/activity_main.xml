@@ -7,41 +7,56 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
 
-    <Button
-        android:id="@+id/startBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Start"
+        <ImageView
+            android:id="@+id/backIv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_back"
+            app:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/titleTv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            tools:text="Lorem Ipsum" />
+    </Toolbar>
+
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/navHostFragment"
+        android:name="androidx.navigation.fragment.NavHostFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:defaultNavHost="true"
+        app:layout_constraintBottom_toTopOf="@id/moveNextBtn"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:navGraph="@navigation/nav_graph" />
 
-    <Button
-        android:id="@+id/stopBtn"
-        android:layout_width="wrap_content"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/moveNextBtn"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="16dp"
-        android:text="Stop"
-        app:layout_constraintStart_toEndOf="@id/startBtn"
-        app:layout_constraintTop_toTopOf="@id/startBtn" />
-
-    <Button
-        android:id="@+id/playSoundBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="PlaySoundBtn"
-        android:layout_marginStart="16dp"
-        app:layout_constraintStart_toEndOf="@id/stopBtn"
-        app:layout_constraintTop_toTopOf="@id/startBtn"
-        tools:layout_editor_absoluteX="104dp" />
+        android:text="Move Next"
+        app:cornerRadius="8dp"
+        android:textStyle="bold"
+        android:layout_margin="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,4 +1,4 @@
-package com.android.example.screenrecording
+package com.android.example.screenrecording.service
 
 import android.app.Notification
 import android.app.NotificationChannel

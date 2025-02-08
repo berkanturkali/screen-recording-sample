@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaActionSound
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
@@ -16,7 +15,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
 import com.android.example.screenrecording.databinding.ActivityMainBinding
+import com.android.example.screenrecording.service.ScreenRecordingService
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,11 +29,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
+    private lateinit var navController: NavController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupNavigation()
+        setClickListeners()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -49,19 +56,6 @@ class MainActivity : AppCompatActivity() {
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         setupScreenCaptureLauncher()
-
-        binding.startBtn.setOnClickListener {
-            requestScreenRecordingPermission()
-        }
-
-        binding.stopBtn.setOnClickListener {
-            stopScreenRecording()
-        }
-
-        binding.playSoundBtn.setOnClickListener {
-            val sound = MediaActionSound()
-            sound.play(MediaActionSound.START_VIDEO_RECORDING)
-        }
     }
 
     private fun requestPermissionsIfNecessary() {
@@ -119,6 +113,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun showScreenCaptureDeniedMessage() {
         Toast.makeText(this, "Screen capture permission was denied", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setupNavigation() {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment
+        navController = navHostFragment.navController
+
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            binding.titleTv.text = destination.label
+
+            binding.backIv.isVisible = destination.id != R.id.fragmentA
+
+            binding.moveNextBtn.isVisible = destination.id == R.id.fragmentC
+
+        }
+    }
+
+    private fun setClickListeners() {
+        binding.apply {
+            backIv.setOnClickListener {
+                navController.navigateUp()
+            }
+            moveNextBtn.setOnClickListener {
+
+            }
+        }
     }
 
 }
