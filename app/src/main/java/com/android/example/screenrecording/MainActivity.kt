@@ -1,6 +1,8 @@
 package com.android.example.screenrecording
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -15,6 +17,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -24,6 +27,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.android.example.screenrecording.databinding.ActivityMainBinding
+import com.android.example.screenrecording.model.ScreenRecordButtonActions
 import com.android.example.screenrecording.service.ScreenRecordingService
 import com.android.example.screenrecording.viewmodel.MainActivityViewModel
 import kotlinx.coroutines.Job
@@ -67,6 +71,8 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
         setClickListeners()
         startOpacityTimer()
+        subscribeObservers()
+
         // Setting this from themes does not work and this shit is deprecated in Android 14+
         // Changing a simple stupid status bar color should not be this challenging
         window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
@@ -159,6 +165,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun subscribeObservers() {
+        viewModel.screenRecordButtonAction.observe(this) { action ->
+            when (action) {
+                ScreenRecordButtonActions.ACTION_START -> {
+                    animateStartScreenRecordingButtonIcon(R.drawable.ic_stop)
+                    startPulsingAnimationForRecordIndicator()
+                }
+
+                ScreenRecordButtonActions.ACTION_STOP -> {
+                    animateStartScreenRecordingButtonIcon(R.drawable.ic_play)
+                    stopPulsingAnimationForRecordIndicator()
+                }
+            }
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun setClickListeners() {
         binding.apply {
@@ -167,6 +189,23 @@ class MainActivity : AppCompatActivity() {
             }
             moveNextBtn.setOnClickListener {
                 navController.navigate(viewModel.navigationActionId)
+            }
+
+            draggableScreenCaptureLayout.startStopRecordingBtn.setOnClickListener {
+                resetOpacity()
+                val action = viewModel.screenRecordButtonAction.value?.let { action ->
+                    val newAction = if (action == ScreenRecordButtonActions.ACTION_START) {
+                        ScreenRecordButtonActions.ACTION_STOP
+                    } else {
+                        ScreenRecordButtonActions.ACTION_START
+                    }
+                    newAction
+                } ?: ScreenRecordButtonActions.ACTION_START
+                viewModel.setScreenRecordButtonAction(action)
+                lifecycleScope.launch {
+                    delay(1000)
+                    startOpacityTimer()
+                }
             }
 
             draggableScreenCaptureLayout.root.setOnTouchListener { v, event ->
@@ -217,7 +256,7 @@ class MainActivity : AppCompatActivity() {
     private fun startOpacityTimer() {
         fadeJob?.cancel()
         fadeJob = lifecycleScope.launch {
-            delay(200)
+            delay(1000)
             binding.draggableScreenCaptureLayout.root
                 .animate()
                 .alpha(0.5f)
@@ -233,6 +272,61 @@ class MainActivity : AppCompatActivity() {
             .alpha(1f)
             .setDuration(300)
             .start()
+    }
+
+    private fun animateStartScreenRecordingButtonIcon(@DrawableRes icon: Int) {
+        binding.draggableScreenCaptureLayout.startStopRecordingBtnIconIv.animate()
+            .scaleX(0f)
+            .scaleY(0f)
+            .setDuration(150)
+            .withEndAction {
+                binding.draggableScreenCaptureLayout.startStopRecordingBtnIconIv.setImageResource(
+                    icon
+                )
+                binding.draggableScreenCaptureLayout.startStopRecordingBtnIconIv.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(150)
+                    .start()
+            }
+            .start()
+    }
+
+    private fun startPulsingAnimationForRecordIndicator() {
+        binding.draggableScreenCaptureLayout.recordingIndicatorIv.visibility = View.VISIBLE
+        val scaleX = ObjectAnimator.ofFloat(
+            binding.draggableScreenCaptureLayout.recordingIndicatorIv,
+            "scaleX",
+            0.5f, 0.8f
+        )
+
+        val scaleY = ObjectAnimator.ofFloat(
+            binding.draggableScreenCaptureLayout.recordingIndicatorIv,
+            "scaleY",
+            0.5f, 0.8f
+        )
+
+        scaleX.duration = 800
+        scaleY.duration = 800
+
+        scaleX.repeatCount = ValueAnimator.INFINITE
+        scaleX.repeatMode = ValueAnimator.REVERSE
+
+        scaleY.repeatCount = ValueAnimator.INFINITE
+        scaleY.repeatMode = ValueAnimator.REVERSE
+
+        scaleX.start()
+        scaleY.start()
+
+        binding.draggableScreenCaptureLayout.recordingIndicatorIv.tag = 1
+    }
+
+    private fun stopPulsingAnimationForRecordIndicator() {
+        binding.draggableScreenCaptureLayout.recordingIndicatorIv.visibility = View.GONE
+        val animator =
+            binding.draggableScreenCaptureLayout.recordingIndicatorIv.getTag(1) as? ObjectAnimator
+        animator?.cancel()
+
     }
 
 }
