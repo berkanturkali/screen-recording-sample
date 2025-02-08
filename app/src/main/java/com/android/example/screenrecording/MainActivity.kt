@@ -20,11 +20,15 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.android.example.screenrecording.databinding.ActivityMainBinding
 import com.android.example.screenrecording.service.ScreenRecordingService
 import com.android.example.screenrecording.viewmodel.MainActivityViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     private var screenWidth = 0
     private var screenHeight = 0
 
+    private var fadeJob: Job? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -60,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         }
         setupNavigation()
         setClickListeners()
+        startOpacityTimer()
         // Setting this from themes does not work and this shit is deprecated in Android 14+
         // Changing a simple stupid status bar color should not be this challenging
         window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
@@ -163,8 +170,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             draggableScreenCaptureLayout.root.setOnTouchListener { v, event ->
+
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
+                        resetOpacity()
                         dX = v.x - event.rawX
                         dY = v.y - event.rawY
                     }
@@ -195,12 +204,35 @@ class MainActivity : AppCompatActivity() {
                             .y(buttonY)
                             .setDuration(300)
                             .start()
+
+                        startOpacityTimer()
                     }
                 }
                 true
             }
 
         }
+    }
+
+    private fun startOpacityTimer() {
+        fadeJob?.cancel()
+        fadeJob = lifecycleScope.launch {
+            delay(200)
+            binding.draggableScreenCaptureLayout.root
+                .animate()
+                .alpha(0.5f)
+                .setDuration(300)
+                .start()
+        }
+    }
+
+    private fun resetOpacity() {
+        fadeJob?.cancel()
+        binding.draggableScreenCaptureLayout.root
+            .animate()
+            .alpha(1f)
+            .setDuration(300)
+            .start()
     }
 
 }
