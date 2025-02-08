@@ -18,7 +18,7 @@ abstract class BaseFragment<VB : ViewBinding>(
     private var _binding: VB? = null
     val binding: VB get() = _binding!!
 
-    private val activityViewModel by activityViewModels<MainActivityViewModel>()
+    protected val activityViewModel by activityViewModels<MainActivityViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater,

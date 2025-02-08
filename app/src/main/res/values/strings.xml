@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ScreenRecording</string>
+    <string name="move_next">Move Next</string>
 </resources>

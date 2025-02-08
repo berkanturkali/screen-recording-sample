@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
@@ -42,6 +43,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setupNavigation()
         setClickListeners()
+        // Setting this from themes does not work and this shit is deprecated in Android 14+
+        // Changing a simple stupid status bar color should not be this challenging
+        window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -129,7 +133,8 @@ class MainActivity : AppCompatActivity() {
 
             binding.backIv.isVisible = destination.id != R.id.fragmentA
 
-            binding.moveNextBtn.isVisible = destination.id == R.id.fragmentC
+            binding.moveNextBtn.visibility =
+                if (destination.id != R.id.fragmentC) View.VISIBLE else View.INVISIBLE
 
         }
     }
