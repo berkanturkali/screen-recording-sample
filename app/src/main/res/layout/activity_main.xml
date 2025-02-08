@@ -45,7 +45,9 @@
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:navGraph="@navigation/nav_graph" />
 
-    <include layout="@layout/layout_draggable_screen_capture" />
+    <include
+        android:id="@+id/draggableScreenCaptureLayout"
+        layout="@layout/layout_draggable_screen_capture" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/moveNextBtn"

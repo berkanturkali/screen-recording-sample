@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     app:cardCornerRadius="20dp"
@@ -13,7 +14,8 @@
         android:layout_marginStart="12dp"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="12dp"
-        android:layout_marginBottom="4dp">
+        android:layout_marginBottom="4dp"
+        android:animateLayoutChanges="true">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/startStopRecordingBtn"
@@ -41,10 +43,12 @@
             android:layout_height="16dp"
             android:layout_marginStart="4dp"
             android:src="@drawable/ic_record_indicator"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="@id/startStopRecordingBtn"
             app:layout_constraintStart_toEndOf="@id/startStopRecordingBtn"
             app:layout_constraintTop_toTopOf="@id/startStopRecordingBtn"
-            app:tint="@color/recording_indicator_red" />
+            app:tint="@color/recording_indicator_red"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/timerTv"

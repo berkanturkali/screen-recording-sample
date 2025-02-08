@@ -1,12 +1,14 @@
 package com.android.example.screenrecording
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -36,21 +38,32 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel by viewModels<MainActivityViewModel>()
 
+    private var dX = 0f
+    private var dY = 0f
+
+    private var screenWidth = 0
+    private var screenHeight = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setupNavigation()
-        setClickListeners()
-        // Setting this from themes does not work and this shit is deprecated in Android 14+
-        // Changing a simple stupid status bar color should not be this challenging
-        window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
+        val displayMetrics = resources.displayMetrics
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        setupNavigation()
+        setClickListeners()
+        // Setting this from themes does not work and this shit is deprecated in Android 14+
+        // Changing a simple stupid status bar color should not be this challenging
+        window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
+
         permissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
                 val allGranted = permissions.all { it.value }
@@ -139,6 +152,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun setClickListeners() {
         binding.apply {
             backIv.setOnClickListener {
@@ -147,6 +161,45 @@ class MainActivity : AppCompatActivity() {
             moveNextBtn.setOnClickListener {
                 navController.navigate(viewModel.navigationActionId)
             }
+
+            draggableScreenCaptureLayout.root.setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        dX = v.x - event.rawX
+                        dY = v.y - event.rawY
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val maxX = (screenWidth - v.width).toFloat().coerceAtLeast(0f)
+                        val maxY = (screenHeight - v.height).toFloat().coerceAtLeast(0f)
+
+                        val newX = (event.rawX + dX).coerceIn(0f, maxX)
+                        val newY = (event.rawY + dY).coerceIn(0f, maxY)
+
+                        v.animate()
+                            .x(newX)
+                            .y(newY)
+                            .setDuration(0)
+                            .start()
+                    }
+
+                    MotionEvent.ACTION_UP -> {
+                        val buttonX = v.x
+                        val buttonY = v.y
+
+                        val closestX =
+                            if (buttonX < screenWidth / 2) 0f else (screenWidth - v.width).toFloat()
+
+                        v.animate()
+                            .x(closestX)
+                            .y(buttonY)
+                            .setDuration(300)
+                            .start()
+                    }
+                }
+                true
+            }
+
         }
     }
 
