@@ -53,6 +53,8 @@ class MainActivity : AppCompatActivity() {
     private var screenHeight = 0
 
     private var fadeJob: Job? = null
+    private var timerJob: Job? = null
+    private var timeInSeconds = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -179,6 +181,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        viewModel.time.observe(this) { time ->
+            binding.draggableScreenCaptureLayout.timerTv.text = time
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -195,12 +201,18 @@ class MainActivity : AppCompatActivity() {
                 resetOpacity()
                 val action = viewModel.screenRecordButtonAction.value?.let { action ->
                     val newAction = if (action == ScreenRecordButtonActions.ACTION_START) {
+                        viewModel.stopTimer()
                         ScreenRecordButtonActions.ACTION_STOP
                     } else {
+                        viewModel.startTimer()
                         ScreenRecordButtonActions.ACTION_START
                     }
                     newAction
-                } ?: ScreenRecordButtonActions.ACTION_START
+                } ?: kotlin.run {
+                    viewModel.startTimer()
+                    ScreenRecordButtonActions.ACTION_START
+                }
+
                 viewModel.setScreenRecordButtonAction(action)
                 lifecycleScope.launch {
                     delay(1000)
