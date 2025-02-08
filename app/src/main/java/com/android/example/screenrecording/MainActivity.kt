@@ -5,17 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaActionSound
-import android.media.MediaPlayer
-import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -30,8 +26,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
-    private lateinit var mediaProjection: MediaProjection
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,17 +36,17 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            val allGranted = permissions.all { it.value }
-            if (allGranted) {
-                // Permissions granted, proceed to request screen recording permission
-                requestScreenRecordingPermission()
-            } else {
-                // Handle permission denial
-                showPermissionDeniedMessage()
+        permissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                val allGranted = permissions.all { it.value }
+                if (allGranted) {
+                    requestScreenRecordingPermission()
+                } else {
+                    showPermissionDeniedMessage()
+                }
             }
-        }
-        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionManager =
+            getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         setupScreenCaptureLauncher()
 
@@ -61,7 +55,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.stopBtn.setOnClickListener {
-            Log.i(TAG, "onCreate: here")
             stopScreenRecording()
         }
 
@@ -70,8 +63,6 @@ class MainActivity : AppCompatActivity() {
             sound.play(MediaActionSound.START_VIDEO_RECORDING)
         }
     }
-
-    private val TAG = "MainActivity"
 
     private fun requestPermissionsIfNecessary() {
         val requiredPermissions = arrayOf(
@@ -85,12 +76,11 @@ class MainActivity : AppCompatActivity() {
         if (missingPermissions.isNotEmpty()) {
             permissionLauncher.launch(missingPermissions.toTypedArray())
         } else {
-            // If all permissions are granted, proceed to request screen recording permission
             requestScreenRecordingPermission()
         }
     }
 
-    fun setupScreenCaptureLauncher() {
+    private fun setupScreenCaptureLauncher() {
         screenCaptureLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == RESULT_OK && result.data != null) {
@@ -122,9 +112,9 @@ class MainActivity : AppCompatActivity() {
         startService(intent)
     }
 
-
     private fun showPermissionDeniedMessage() {
-        Toast.makeText(this, "Permissions are required for screen recording", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Permissions are required for screen recording", Toast.LENGTH_SHORT)
+            .show()
     }
 
     private fun showScreenCaptureDeniedMessage() {
