@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -20,6 +21,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.android.example.screenrecording.databinding.ActivityMainBinding
 import com.android.example.screenrecording.service.ScreenRecordingService
+import com.android.example.screenrecording.viewmodel.MainActivityViewModel
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
     private lateinit var navController: NavController
+
+    private val viewModel by viewModels<MainActivityViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,7 +140,7 @@ class MainActivity : AppCompatActivity() {
                 navController.navigateUp()
             }
             moveNextBtn.setOnClickListener {
-
+                navController.navigate(viewModel.navigationActionId)
             }
         }
     }
