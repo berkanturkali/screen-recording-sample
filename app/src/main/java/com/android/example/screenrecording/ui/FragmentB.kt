@@ -1,6 +1,8 @@
 package com.android.example.screenrecording.ui
 
-import androidx.fragment.app.Fragment
+import com.android.example.screenrecording.base.BaseFragment
+import com.android.example.screenrecording.databinding.FragmentBBinding
 
-class FragmentB : Fragment() {
+class FragmentB : BaseFragment<FragmentBBinding>(FragmentBBinding::inflate) {
+
 }
