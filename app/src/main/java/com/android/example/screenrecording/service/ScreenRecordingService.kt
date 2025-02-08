@@ -150,13 +150,13 @@ class ScreenRecordingService : Service() {
             mediaRecorder = MediaRecorder()
         }
         mediaRecorder.apply {
-            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            mediaRecorder.setOutputFile(path)
-            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            mediaRecorder.setVideoSize(width, height)
-            mediaRecorder.setVideoFrameRate(60)
-            mediaRecorder.setVideoEncodingBitRate(8000000)
+            setVideoSource(MediaRecorder.VideoSource.SURFACE)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setOutputFile(path)
+            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setVideoSize(width, height)
+            setVideoFrameRate(60)
+            setVideoEncodingBitRate(8000000)
         }
         mediaRecorder.prepare()
     }

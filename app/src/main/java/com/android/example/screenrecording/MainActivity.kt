@@ -46,15 +46,10 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel by viewModels<MainActivityViewModel>()
 
-    private var dX = 0f
-    private var dY = 0f
-
     private var screenWidth = 0
     private var screenHeight = 0
 
     private var fadeJob: Job? = null
-    private var timerJob: Job? = null
-    private var timeInSeconds = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +65,7 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
         setupNavigation()
         setClickListeners()
         startOpacityTimer()
@@ -115,6 +111,7 @@ class MainActivity : AppCompatActivity() {
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == RESULT_OK && result.data != null) {
                     startScreenRecordingService(result.resultCode, result.data!!)
+                    viewModel.setScreenRecordButtonAction(ScreenRecordButtonActions.ACTION_START)
                 }
             }
     }
@@ -185,6 +182,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.time.observe(this) { time ->
             binding.draggableScreenCaptureLayout.timerTv.text = time
         }
+
+        viewModel.statusBarColor.observe(this) { color ->
+            window.statusBarColor = ContextCompat.getColor(this, color)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -199,21 +200,17 @@ class MainActivity : AppCompatActivity() {
 
             draggableScreenCaptureLayout.startStopRecordingBtn.setOnClickListener {
                 resetOpacity()
-                val action = viewModel.screenRecordButtonAction.value?.let { action ->
-                    val newAction = if (action == ScreenRecordButtonActions.ACTION_START) {
-                        viewModel.stopTimer()
-                        ScreenRecordButtonActions.ACTION_STOP
+                viewModel.screenRecordButtonAction.value?.let { action ->
+                    if (action == ScreenRecordButtonActions.ACTION_START) {
+                        stopScreenRecording()
+                        viewModel.setScreenRecordButtonAction(ScreenRecordButtonActions.ACTION_STOP)
                     } else {
-                        viewModel.startTimer()
-                        ScreenRecordButtonActions.ACTION_START
+                        requestScreenRecordingPermission()
                     }
-                    newAction
                 } ?: kotlin.run {
-                    viewModel.startTimer()
-                    ScreenRecordButtonActions.ACTION_START
+                    requestScreenRecordingPermission()
                 }
 
-                viewModel.setScreenRecordButtonAction(action)
                 lifecycleScope.launch {
                     delay(1000)
                     startOpacityTimer()
@@ -225,16 +222,16 @@ class MainActivity : AppCompatActivity() {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         resetOpacity()
-                        dX = v.x - event.rawX
-                        dY = v.y - event.rawY
+                        viewModel.dX = v.x - event.rawX
+                        viewModel.dY = v.y - event.rawY
                     }
 
                     MotionEvent.ACTION_MOVE -> {
                         val maxX = (screenWidth - v.width).toFloat().coerceAtLeast(0f)
                         val maxY = (screenHeight - v.height).toFloat().coerceAtLeast(0f)
 
-                        val newX = (event.rawX + dX).coerceIn(0f, maxX)
-                        val newY = (event.rawY + dY).coerceIn(0f, maxY)
+                        val newX = (event.rawX + viewModel.dX).coerceIn(0f, maxX)
+                        val newY = (event.rawY + viewModel.dY).coerceIn(0f, maxY)
 
                         v.animate()
                             .x(newX)
@@ -338,7 +335,6 @@ class MainActivity : AppCompatActivity() {
         val animator =
             binding.draggableScreenCaptureLayout.recordingIndicatorIv.getTag(1) as? ObjectAnimator
         animator?.cancel()
-
     }
 
 }
