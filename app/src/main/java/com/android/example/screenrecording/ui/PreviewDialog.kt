@@ -5,5 +5,4 @@ import androidx.fragment.app.DialogFragment
 class PreviewDialog: DialogFragment() {
 
 
-
 }
