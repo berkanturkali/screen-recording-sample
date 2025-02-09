@@ -1,8 +1,10 @@
 package com.android.example.screenrecording.ui
 
-import androidx.fragment.app.DialogFragment
+import com.android.example.screenrecording.base.BaseDialogFragment
+import com.android.example.screenrecording.databinding.DialogPreviewBinding
 
-class PreviewDialog: DialogFragment() {
+class PreviewDialog : BaseDialogFragment<DialogPreviewBinding>(DialogPreviewBinding::inflate) {
+
 
 
 }
