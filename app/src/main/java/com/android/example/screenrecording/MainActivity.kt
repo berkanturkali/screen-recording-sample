@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
@@ -33,6 +34,7 @@ import com.android.example.screenrecording.viewmodel.MainActivityViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -50,6 +52,8 @@ class MainActivity : AppCompatActivity() {
     private var screenHeight = 0
 
     private var fadeJob: Job? = null
+
+    private var recordOutputPath: String = getOutputPath()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         intent.action = ScreenRecordingService.ACTION_START
         intent.putExtra(ScreenRecordingService.EXTRA_RESULT_CODE, resultCode)
         intent.putExtra(ScreenRecordingService.EXTRA_RESULT_DATA, data)
+        intent.putExtra(ScreenRecordingService.OUTPUT_PATH, recordOutputPath)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
@@ -337,4 +342,24 @@ class MainActivity : AppCompatActivity() {
         animator?.cancel()
     }
 
+    private fun getOutputPath(): String {
+        val outputPath = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            val moviesDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "")
+            if (!moviesDir.exists()) {
+                moviesDir.mkdirs()
+            }
+            "${moviesDir.absolutePath}/screen_recording.mp4"
+        } else {
+            val moviesDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                ""
+            )
+            if (!moviesDir.exists()) {
+                moviesDir.mkdirs()
+            }
+            "${moviesDir.absolutePath}/screen_recording.mp4"
+        }
+
+        return outputPath
+    }
 }

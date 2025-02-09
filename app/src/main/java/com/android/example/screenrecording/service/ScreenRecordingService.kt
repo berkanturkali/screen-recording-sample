@@ -12,7 +12,6 @@ import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -24,7 +23,6 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import java.io.File
 
 class ScreenRecordingService : Service() {
 
@@ -35,6 +33,7 @@ class ScreenRecordingService : Service() {
         const val ACTION_STOP = "ACTION_STOP_SCREEN_RECORDING"
         const val EXTRA_RESULT_CODE = "RESULT_CODE"
         const val EXTRA_RESULT_DATA = "RESULT_DATA"
+        const val OUTPUT_PATH = "OUTPUT_PATH"
     }
 
     private var mediaProjection: MediaProjection? = null
@@ -52,9 +51,10 @@ class ScreenRecordingService : Service() {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1)
                 val resultData: Intent = intent.getParcelableExtra(EXTRA_RESULT_DATA)!!
+                val outputPath = intent.getStringExtra(OUTPUT_PATH)!!
                 createNotificationChannel()
                 startForeground(NOTIFICATION_ID, createNotification())
-                startRecording(resultCode, resultData)
+                startRecording(resultCode, resultData, outputPath)
             }
 
             ACTION_STOP -> {
@@ -94,7 +94,7 @@ class ScreenRecordingService : Service() {
 
     }
 
-    private fun startRecording(resultCode: Int, resultData: Intent) {
+    private fun startRecording(resultCode: Int, resultData: Intent, outputPath: String) {
         val mediaProjectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -106,22 +106,7 @@ class ScreenRecordingService : Service() {
 
         val (width, height, densityDp) = getScreenMetrics()
 
-        val outputPath = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-            val moviesDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "")
-            if (!moviesDir.exists()) {
-                moviesDir.mkdirs()
-            }
-            "${moviesDir.absolutePath}/screen_recording.mp4"
-        } else {
-            val moviesDir = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                ""
-            )
-            if (!moviesDir.exists()) {
-                moviesDir.mkdirs()
-            }
-            "${moviesDir.absolutePath}/screen_recording.mp4"
-        }
+
 
         setupVideoEncoder(outputPath, width, height)
         virtualDisplay = mediaProjection?.createVirtualDisplay(
