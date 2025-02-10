@@ -129,10 +129,10 @@ class ScreenRecordingService : Service() {
     private val TAG = "ScreenRecordingService"
 
     private fun setupVideoEncoder(path: String, width: Int, height: Int) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            mediaRecorder = MediaRecorder(baseContext)
+        mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(baseContext)
         } else {
-            mediaRecorder = MediaRecorder()
+            MediaRecorder()
         }
         mediaRecorder.apply {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)

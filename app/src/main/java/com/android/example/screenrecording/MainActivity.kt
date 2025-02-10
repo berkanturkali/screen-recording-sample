@@ -180,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                 ScreenRecordButtonActions.ACTION_STOP -> {
                     animateStartScreenRecordingButtonIcon(R.drawable.ic_play)
                     stopPulsingAnimationForRecordIndicator()
+                    showPreviewDialog()
                 }
             }
         }
@@ -361,5 +362,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         return outputPath
+    }
+
+    private fun showPreviewDialog() {
+        val bundle = Bundle().apply {
+            putString(ScreenRecordingService.OUTPUT_PATH, recordOutputPath)
+        }
+        navController.navigate(R.id.action_global_previewDialog, bundle)
     }
 }

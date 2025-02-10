@@ -41,12 +41,14 @@
         android:id="@+id/previewDialog"
         android:name="com.android.example.screenrecording.ui.PreviewDialog"
         android:label="PreviewDialog"
-        tools:layout="@layout/dialog_preview" />
+        tools:layout="@layout/dialog_preview">
+        <argument
+            android:name="outputPath"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+    </dialog>
     <action
         android:id="@+id/action_global_previewDialog"
-        app:destination="@id/previewDialog"
-        app:enterAnim="@anim/slide_in_bottom"
-        app:exitAnim="@anim/slide_out_bottom"
-        app:popEnterAnim="@anim/slide_out_bottom"
-        app:popExitAnim="@anim/slide_in_bottom" />
+        app:destination="@id/previewDialog" />
 </navigation>
