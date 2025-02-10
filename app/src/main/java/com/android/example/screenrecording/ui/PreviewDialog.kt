@@ -9,10 +9,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
-import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.fragment.findNavController
+import com.android.example.screenrecording.R
 import com.android.example.screenrecording.base.BaseDialogFragment
 import com.android.example.screenrecording.databinding.DialogPreviewBinding
 import com.android.example.screenrecording.service.ScreenRecordingService
@@ -30,6 +30,7 @@ class PreviewDialog : BaseDialogFragment<DialogPreviewBinding>(DialogPreviewBind
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        dialog?.window?.setWindowAnimations(R.style.Theme_ScreenRecording_DialogAnimation)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
