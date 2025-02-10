@@ -1,16 +1,17 @@
 package com.android.example.screenrecording
 
-import android.Manifest
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.ServiceConnection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.IBinder
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
@@ -29,6 +30,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.android.example.screenrecording.databinding.ActivityMainBinding
 import com.android.example.screenrecording.model.ScreenRecordButtonActions
+import com.android.example.screenrecording.model.ScreenRecordingServiceInteractionListener
 import com.android.example.screenrecording.service.ScreenRecordingService
 import com.android.example.screenrecording.viewmodel.MainActivityViewModel
 import kotlinx.coroutines.Job
@@ -36,7 +38,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListener {
 
     private lateinit var binding: ActivityMainBinding
 
@@ -47,6 +49,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navController: NavController
 
     private val viewModel by viewModels<MainActivityViewModel>()
+
+    private var screenRecordingService: ScreenRecordingService? = null
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as ScreenRecordingService.ScreenRecordingBinder
+            screenRecordingService = binder.getService()
+            screenRecordingService!!.setScreenRecordingServiceInteractionListener(this@MainActivity)
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            screenRecordingService = null
+        }
+    }
 
     private var screenWidth = 0
     private var screenHeight = 0
@@ -94,22 +110,6 @@ class MainActivity : AppCompatActivity() {
         setupScreenCaptureLauncher()
     }
 
-    private fun requestPermissionsIfNecessary() {
-        val requiredPermissions = arrayOf(
-            Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
-        )
-
-        val missingPermissions = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missingPermissions.isNotEmpty()) {
-            permissionLauncher.launch(missingPermissions.toTypedArray())
-        } else {
-            requestScreenRecordingPermission()
-        }
-    }
-
     private fun setupScreenCaptureLauncher() {
         screenCaptureLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -126,6 +126,7 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra(ScreenRecordingService.EXTRA_RESULT_CODE, resultCode)
         intent.putExtra(ScreenRecordingService.EXTRA_RESULT_DATA, data)
         intent.putExtra(ScreenRecordingService.OUTPUT_PATH, recordOutputPath)
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
@@ -369,5 +370,18 @@ class MainActivity : AppCompatActivity() {
             putString(ScreenRecordingService.OUTPUT_PATH, recordOutputPath)
         }
         navController.navigate(R.id.action_global_previewDialog, bundle)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unbindService(serviceConnection)
+    }
+
+    override fun onTimeUpdate(time: String) {
+        viewModel.setTime(time)
+    }
+
+    override fun onTimerReachedMaxLimit() {
+        viewModel.setScreenRecordButtonAction(ScreenRecordButtonActions.ACTION_STOP)
     }
 }

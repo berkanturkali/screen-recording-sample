@@ -3,6 +3,7 @@ package com.android.example.screenrecording.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -20,9 +22,15 @@ import android.util.Log
 import android.view.WindowManager
 import android.view.WindowMetrics
 import androidx.core.app.NotificationCompat
+import com.android.example.screenrecording.R
+import com.android.example.screenrecording.model.ScreenRecordingServiceInteractionListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class ScreenRecordingService : Service() {
 
@@ -40,7 +48,20 @@ class ScreenRecordingService : Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var isRecording = false
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    private var timeInSeconds = 0
+    private var timerJob: Job? = null
+
+    private val binder = ScreenRecordingBinder()
+
+    private lateinit var screenRecordingServiceInteractionListener: ScreenRecordingServiceInteractionListener
+
+    fun setScreenRecordingServiceInteractionListener(listener: ScreenRecordingServiceInteractionListener) {
+        screenRecordingServiceInteractionListener = listener
+    }
+
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
+    }
 
     private lateinit var mediaRecorder: MediaRecorder
 
@@ -53,14 +74,16 @@ class ScreenRecordingService : Service() {
                 val resultData: Intent = intent.getParcelableExtra(EXTRA_RESULT_DATA)!!
                 val outputPath = intent.getStringExtra(OUTPUT_PATH)!!
                 createNotificationChannel()
-                startForeground(NOTIFICATION_ID, createNotification())
+                startForeground(NOTIFICATION_ID, createNotification("00:00"))
                 startRecording(resultCode, resultData, outputPath)
+                startTimer()
             }
 
             ACTION_STOP -> {
                 stopRecording()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
+                stopTimer()
             }
         }
         return START_NOT_STICKY
@@ -81,15 +104,26 @@ class ScreenRecordingService : Service() {
         }
     }
 
-    private fun createNotification(): Notification {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createNotificationChannel()
+    private fun createNotification(timeText: String): Notification {
+        val stopIntent = Intent(this, ScreenRecordingService::class.java).apply {
+            action = ACTION_STOP
         }
+
+        val stopPendingIntent = PendingIntent.getService(
+            this, 0, stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Recording in Progress")
-            .setContentText("Your screen is being recorded.")
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentText(timeText)
+            .setSmallIcon(R.drawable.ic_stop)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .addAction(
+                R.drawable.ic_stop,
+                "Stop",
+                stopPendingIntent
+            )
             .build()
 
     }
@@ -181,5 +215,44 @@ class ScreenRecordingService : Service() {
         }
     }
 
+    fun updateNotification(timeText: String) {
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(NOTIFICATION_ID, createNotification(timeText))
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                if (timeInSeconds == 60) {
+                    stopTimer()
+                    screenRecordingServiceInteractionListener.onTimerReachedMaxLimit()
+                    return@launch
+                }
+                val time = formatTime(timeInSeconds)
+                screenRecordingServiceInteractionListener.onTimeUpdate(time)
+                updateNotification(time)
+                timeInSeconds++
+                delay(1000)
+            }
+        }
+    }
+
+    private fun stopTimer() {
+        timerJob?.cancel()
+        timeInSeconds = 0
+        screenRecordingServiceInteractionListener.onTimeUpdate(formatTime(timeInSeconds))
+    }
+
+    private fun formatTime(seconds: Int): String {
+        val minutest = seconds / 60
+        val remainingSeconds = seconds % 60
+        return String.format("%02d:%02d", minutest, remainingSeconds)
+    }
+
+    inner class ScreenRecordingBinder : Binder() {
+        fun getService(): ScreenRecordingService = this@ScreenRecordingService
+    }
 
 }
