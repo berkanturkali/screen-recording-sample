@@ -71,7 +71,13 @@ class ScreenRecordingService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1)
-                val resultData: Intent = intent.getParcelableExtra(EXTRA_RESULT_DATA)!!
+                val resultData: Intent =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)!!
+                    } else {
+                        intent.getParcelableExtra(EXTRA_RESULT_DATA)!!
+                    }
+
                 val outputPath = intent.getStringExtra(OUTPUT_PATH)!!
                 createNotificationChannel()
                 startForeground(NOTIFICATION_ID, createNotification(formatTime(timeInSeconds)))
@@ -84,6 +90,7 @@ class ScreenRecordingService : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 stopTimer()
+                screenRecordingServiceInteractionListener.onStopAction()
             }
         }
         return START_NOT_STICKY
@@ -116,7 +123,7 @@ class ScreenRecordingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.screen_recording_notification_title))
             .setContentText(timeText)
-            .setSmallIcon(R.drawable.ic_stop)
+            .setSmallIcon(R.drawable.ic_record_indicator)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(

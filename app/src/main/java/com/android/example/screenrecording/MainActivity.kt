@@ -50,17 +50,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
 
     private var screenRecordingService: ScreenRecordingService? = null
 
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val binder = service as ScreenRecordingService.ScreenRecordingBinder
-            screenRecordingService = binder.getService()
-            screenRecordingService!!.setScreenRecordingServiceInteractionListener(this@MainActivity)
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            screenRecordingService = null
-        }
-    }
+    private lateinit var serviceConnection: ServiceConnection
 
     private var screenWidth = 0
     private var screenHeight = 0
@@ -85,6 +75,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
             insets
         }
         initScreenWidthAndHeight()
+        initServiceConnection()
         setupNavigation()
         setClickListeners()
         startOpacityTimer()
@@ -97,6 +88,19 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
         val displayMetrics = resources.displayMetrics
         screenWidth = displayMetrics.widthPixels
         screenHeight = displayMetrics.heightPixels
+    }
+    private fun initServiceConnection() {
+       serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as ScreenRecordingService.ScreenRecordingBinder
+                screenRecordingService = binder.getService()
+                screenRecordingService!!.setScreenRecordingServiceInteractionListener(this@MainActivity)
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                screenRecordingService = null
+            }
+        }
     }
 
     private fun initMediaProjectionManager() {
@@ -359,7 +363,9 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
 
     override fun onDestroy() {
         super.onDestroy()
-        unbindService(serviceConnection)
+        if(screenRecordingService != null) {
+            unbindService(serviceConnection)
+        }
     }
 
     override fun onTimeUpdate(time: String) {
@@ -367,6 +373,10 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
     }
 
     override fun onTimerReachedMaxLimit() {
+        viewModel.setScreenRecordButtonAction(ScreenRecordButtonActions.ACTION_STOP)
+    }
+
+    override fun onStopAction() {
         viewModel.setScreenRecordButtonAction(ScreenRecordButtonActions.ACTION_STOP)
     }
 }

@@ -53,7 +53,7 @@ class PreviewDialog : BaseDialogFragment<DialogPreviewBinding>(DialogPreviewBind
 
     private fun setClickListeners() {
         binding.apply {
-            closeIv.setOnClickListener {
+            closeCv.setOnClickListener {
                 deleteTheVideoThenNavigateUp()
             }
 

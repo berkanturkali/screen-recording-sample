@@ -5,4 +5,6 @@ interface ScreenRecordingServiceInteractionListener {
     fun onTimeUpdate(time: String)
 
     fun onTimerReachedMaxLimit()
+
+    fun onStopAction()
 }
