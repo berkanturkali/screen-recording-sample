@@ -57,9 +57,6 @@ class PreviewDialog : BaseDialogFragment<DialogPreviewBinding>(DialogPreviewBind
                 deleteTheVideoThenNavigateUp()
             }
 
-            deleteIv.setOnClickListener {
-                deleteTheVideoThenNavigateUp()
-            }
             thumbnailLayout.playIv.setOnClickListener {
                 thumbnailLayout.root.visibility = View.GONE
                 previewPv.visibility = View.VISIBLE

@@ -212,7 +212,7 @@ class ScreenRecordingService : Service() {
         }
     }
 
-    fun updateNotification(timeText: String) {
+    private fun updateNotification(timeText: String) {
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, createNotification(timeText))
