@@ -18,7 +18,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.WindowManager
 import android.view.WindowMetrics
 import androidx.core.app.NotificationCompat
@@ -42,6 +41,7 @@ class ScreenRecordingService : Service() {
         const val EXTRA_RESULT_CODE = "RESULT_CODE"
         const val EXTRA_RESULT_DATA = "RESULT_DATA"
         const val OUTPUT_PATH = "OUTPUT_PATH"
+        private const val MAX_RECORDING_TIME_SECONDS = 60
     }
 
     private var mediaProjection: MediaProjection? = null
@@ -74,7 +74,7 @@ class ScreenRecordingService : Service() {
                 val resultData: Intent = intent.getParcelableExtra(EXTRA_RESULT_DATA)!!
                 val outputPath = intent.getStringExtra(OUTPUT_PATH)!!
                 createNotificationChannel()
-                startForeground(NOTIFICATION_ID, createNotification("00:00"))
+                startForeground(NOTIFICATION_ID, createNotification(formatTime(timeInSeconds)))
                 startRecording(resultCode, resultData, outputPath)
                 startTimer()
             }
@@ -93,10 +93,10 @@ class ScreenRecordingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Screen Recording",
+                getString(R.string.screen_recording_notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Recording screen"
+                description = getString(R.string.screen_recording_notification_channel_description)
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java)
@@ -114,14 +114,14 @@ class ScreenRecordingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Screen Recording in Progress")
+            .setContentTitle(getString(R.string.screen_recording_notification_title))
             .setContentText(timeText)
             .setSmallIcon(R.drawable.ic_stop)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(
                 R.drawable.ic_stop,
-                "Stop",
+                getString(R.string.screen_recording_notification_stop_action),
                 stopPendingIntent
             )
             .build()
@@ -156,11 +156,8 @@ class ScreenRecordingService : Service() {
 
         isRecording = true
         mediaRecorder.start()
-        Log.i(TAG, "VirtualDisplay created with MediaCodec surface")
 
     }
-
-    private val TAG = "ScreenRecordingService"
 
     private fun setupVideoEncoder(path: String, width: Int, height: Int) {
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -225,7 +222,7 @@ class ScreenRecordingService : Service() {
         timerJob?.cancel()
         timerJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
-                if (timeInSeconds == 60) {
+                if (timeInSeconds == MAX_RECORDING_TIME_SECONDS) {
                     stopTimer()
                     screenRecordingServiceInteractionListener.onTimerReachedMaxLimit()
                     return@launch
@@ -248,7 +245,7 @@ class ScreenRecordingService : Service() {
     private fun formatTime(seconds: Int): String {
         val minutest = seconds / 60
         val remainingSeconds = seconds % 60
-        return String.format("%02d:%02d", minutest, remainingSeconds)
+        return getString(R.string.timer_format, minutest, remainingSeconds)
     }
 
     inner class ScreenRecordingBinder : Binder() {

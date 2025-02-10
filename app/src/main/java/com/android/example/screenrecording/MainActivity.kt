@@ -14,7 +14,6 @@ import android.os.Environment
 import android.os.IBinder
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,7 +43,6 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
 
     private lateinit var screenCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var mediaProjectionManager: MediaProjectionManager
-    private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
     private lateinit var navController: NavController
 
@@ -71,43 +69,39 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
 
     private var recordOutputPath: String = getOutputPath()
 
+    companion object {
+        private const val FILE_NAME = "screen_recording.mp4"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        val displayMetrics = resources.displayMetrics
-        screenWidth = displayMetrics.widthPixels
-        screenHeight = displayMetrics.heightPixels
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
+        initScreenWidthAndHeight()
         setupNavigation()
         setClickListeners()
         startOpacityTimer()
         subscribeObservers()
+        initMediaProjectionManager()
+        setupScreenCaptureLauncher()
+    }
 
-        // Setting this from themes does not work and this shit is deprecated in Android 14+
-        // Changing a simple stupid status bar color should not be this challenging
-        window.statusBarColor = ContextCompat.getColor(this, R.color.primary)
+    private fun initScreenWidthAndHeight() {
+        val displayMetrics = resources.displayMetrics
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
+    }
 
-        permissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-                val allGranted = permissions.all { it.value }
-                if (allGranted) {
-                    requestScreenRecordingPermission()
-                } else {
-                    showPermissionDeniedMessage()
-                }
-            }
+    private fun initMediaProjectionManager() {
         mediaProjectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-
-        setupScreenCaptureLauncher()
     }
 
     private fun setupScreenCaptureLauncher() {
@@ -143,15 +137,6 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
         val intent = Intent(this, ScreenRecordingService::class.java)
         intent.action = ScreenRecordingService.ACTION_STOP
         startService(intent)
-    }
-
-    private fun showPermissionDeniedMessage() {
-        Toast.makeText(this, "Permissions are required for screen recording", Toast.LENGTH_SHORT)
-            .show()
-    }
-
-    private fun showScreenCaptureDeniedMessage() {
-        Toast.makeText(this, "Screen capture permission was denied", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupNavigation() {
@@ -350,7 +335,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
             if (!moviesDir.exists()) {
                 moviesDir.mkdirs()
             }
-            "${moviesDir.absolutePath}/screen_recording.mp4"
+            "${moviesDir.absolutePath}/${FILE_NAME}"
         } else {
             val moviesDir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
@@ -359,7 +344,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordingServiceInteractionListe
             if (!moviesDir.exists()) {
                 moviesDir.mkdirs()
             }
-            "${moviesDir.absolutePath}/screen_recording.mp4"
+            "${moviesDir.absolutePath}/${FILE_NAME}"
         }
 
         return outputPath

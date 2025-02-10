@@ -23,6 +23,10 @@ class MainActivityViewModel : ViewModel() {
     private val _statusBarColor = MutableLiveData<Int>()
     val statusBarColor: LiveData<Int> get() = _statusBarColor
 
+    init {
+        setStatusBarColor(R.color.primary)
+    }
+
     fun setScreenRecordButtonAction(action: ScreenRecordButtonActions) {
         when (action) {
             ScreenRecordButtonActions.ACTION_START -> {

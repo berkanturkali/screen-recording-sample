@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">ScreenRecording</string>
     <string name="move_next">Move Next</string>
+    <string name="screen_recording_notification_channel_name">Screen Recording</string>
+    <string name="screen_recording_notification_channel_description">Recording screen</string>
+    <string name="screen_recording_notification_title">Screen Recording in Progress</string>
+    <string name="screen_recording_notification_stop_action">Stop</string>
+    <string name="timer_format">%02d:%02d</string>
 </resources>
