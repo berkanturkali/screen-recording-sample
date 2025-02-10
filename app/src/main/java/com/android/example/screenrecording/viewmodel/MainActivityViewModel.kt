@@ -3,6 +3,7 @@ package com.android.example.screenrecording.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import com.android.example.screenrecording.R
 import com.android.example.screenrecording.model.ScreenRecordButtonActions
 
@@ -14,7 +15,9 @@ class MainActivityViewModel : ViewModel() {
     var dY = 0f
     private val _screenRecordButtonAction = MutableLiveData<ScreenRecordButtonActions>()
 
-    val screenRecordButtonAction: LiveData<ScreenRecordButtonActions> get() = _screenRecordButtonAction
+    val screenRecordButtonAction: LiveData<ScreenRecordButtonActions>
+        get() = _screenRecordButtonAction
+            .distinctUntilChanged()
 
     private val _time = MutableLiveData<String>()
 
